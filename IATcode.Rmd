@@ -69,7 +69,7 @@ print(summary_table)
 
 data <- read.xlsx('reasons.xlsx', sheet = 'matched')
 
-data[, 4:30] <- lapply(data[, 4:30], function(x) ifelse(is.na(x), 0, x))
+data[, 3:29] <- lapply(data[, 3:29], function(x) ifelse(is.na(x), 0, x))
 
 data <- data %>%
   mutate(across(c('Prior_rater1', 'Prior_rater2', 'Prior_rater3'), 
@@ -79,6 +79,7 @@ data <- data %>%
 
 kappam.fleiss(data[,c('Prior_rater1',"Prior_rater2","Prior_rater3")]) #0.93
 
+
 data <- data %>%
   mutate(across(c('New_rater1',"New_rater2","New_rater3"), 
                 ~ ifelse(rowSums(across(c('New_rater1',"New_rater2","New_rater3")) == 1) == 1 & 
@@ -86,6 +87,7 @@ data <- data %>%
                 .names = '{col}'))
 
 kappam.fleiss(data[,c('New_rater1',"New_rater2","New_rater3")]) #0.87
+
 
 data <- data %>%
   mutate(across(c('High_rater1',"High_rater2","High_rater3"), 
@@ -95,6 +97,7 @@ data <- data %>%
 
 kappam.fleiss(data[,c('High_rater1',"High_rater2","High_rater3")]) #0.84
 
+
 data <- data %>%
   mutate(across(c('Low_rater1',"Low_rater2","Low_rater3"), 
                 ~ ifelse(rowSums(across(c('Low_rater1',"Low_rater2","Low_rater3")) == 1) == 1 & 
@@ -102,6 +105,7 @@ data <- data %>%
                 .names = '{col}'))
 
 kappam.fleiss(data[,c('Low_rater1',"Low_rater2","Low_rater3")]) #0.90
+
 
 data <- data %>%
   mutate(across(c('Consist_rater1',"Consist_rater2","Consist_rater3"), 
@@ -111,6 +115,7 @@ data <- data %>%
 
 kappam.fleiss(data[,c('Consist_rater1',"Consist_rater2","Consist_rater3")]) #0.88
 
+
 data <- data %>%
   mutate(across(c('Endorse_rater1',"Endorse_rater2","Endorse_rater3"), 
                 ~ ifelse(rowSums(across(c('Endorse_rater1',"Endorse_rater2","Endorse_rater3")) == 1) == 1 & 
@@ -118,6 +123,7 @@ data <- data %>%
                 .names = '{col}'))
 
 kappam.fleiss(data[,c('Endorse_rater1',"Endorse_rater2","Endorse_rater3")]) #0.82
+
 
 data <- data %>%
   mutate(across(c('Direct_rater1',"Direct_rater2","Direct_rater3"), 
@@ -127,6 +133,7 @@ data <- data %>%
 
 kappam.fleiss(data[,c('Direct_rater1',"Direct_rater2","Direct_rater3")]) #0.76
 
+
 data <- data %>%
   mutate(across(c('Indirect_rater1',"Indirect_rater2","Indirect_rater3"), 
                 ~ ifelse(rowSums(across(c('Indirect_rater1',"Indirect_rater2","Indirect_rater3")) == 1) == 1 & 
@@ -134,6 +141,7 @@ data <- data %>%
                 .names = '{col}'))
 
 kappam.fleiss(data[,c('Indirect_rater1',"Indirect_rater2","Indirect_rater3")]) #0.68
+
 
 data <- data %>%
   mutate(across(c('Invalid_rater1',"Invalid_rater2","Invalid_rater3"), 
@@ -163,7 +171,7 @@ data$Invalid <- ifelse(data$Invalid_rater1 + data$Invalid_rater2 + data$Invalid_
 
 #-----pass rate----
 
-data <- read.xlsx('CFAdata.xlsx')
+data <- read.xlsx('CFAdata.xlsx',sheet ='general')
 
 columns <- c("M1Q1", "M2Q1", "M3Q1", "M4Q1", "M5Q1", "M8Q1",
               "M2Q2", "M4Q2", "M6Q2", "M7Q2", "M8Q2","total",
@@ -177,7 +185,7 @@ results <- data.frame(
   max = round(sapply(data[columns], max), 2)
 )
 
-View(results)
+print(results)
 
 
 p1 <- ggplot(data, aes(x = total)) +
@@ -230,7 +238,7 @@ grid.arrange(p1,p2,p3,ncol=3)
 
 #------IAT-----
 
-CFAdata <- read.xlsx("CFAdata.xlsx")
+CFAdata <- read.xlsx("CFAdata.xlsx",sheet='general')
 
 IATmodel <- '
   f1 =~ M1Q1 + M2Q1 + M3Q1 + M4Q1 + M5Q1
@@ -321,7 +329,7 @@ factor_scores <- predict(fit, newdata = alldata)
 
 ```{r Convergent and discriminant validity}
 
-data <- read.xlsx('CFAdata.xlsx')
+data <- read.xlsx('CFAdata.xlsx',sheet='general')
 
 vars <- c('f_single','f_between','f_integ','f_TSA','f_EW','f_REA1','f_REA2','f_REA3')
 cor_data <- data[, vars]
@@ -340,7 +348,7 @@ p_matrix
 
 library(effectsize)
 
-CFAdata <- read.xlsx("CFAdata.xlsx")
+CFAdata <- read.xlsx("CFAdata.xlsx",sheet='general')
 debater <- read.xlsx("CFAdata.xlsx",sheet='debater')
 
 IATmodel <- '
@@ -403,7 +411,7 @@ library(tidyLPA)
 library(plotly)
 library(reshape2)
 
-data <- read.xlsx('CFAdata.xlsx')
+data <- read.xlsx('CFAdata.xlsx',sheet='general')
 
 selected_vars <- data[, c("f_single", "f_between", "f_integ")]
 
@@ -710,20 +718,20 @@ p <- ggplot(profile_means_long, aes(x = Variable, y = Mean, group = Class, color
   geom_point(size = 3) +
   theme_minimal() +
   scale_x_discrete(labels = c(
-    "f_single" = "单论证分析", 
-    "f_between" = "论证间关系分析", 
-    "f_integ" = "论证整合"
+    "f_single" = "f_single", 
+    "f_between" = "f_between", 
+    "f_integ" = "f_integ"
   )) +
   scale_y_continuous(limits = c(-0.85, 0.6), breaks = seq(-0.85, 0.6, by = 0.2)) +
-  # 让颜色与前面的图匹配
+  # match color
   scale_color_manual(name = " ", 
                     values = custom_colors,
-                    labels = c("1" = "全面欠缺型", 
-                              "2" = "全面优势型", 
-                              "3" = "均衡-关系分析欠缺型", 
-                              "4" = "均衡-关系分析发展型")) +
-  labs(title = "正式测验被试+辩论队被试",
-       y = "平均能力值",
+                    labels = c("1" = "disadvantage", 
+                              "2" = "advantage", 
+                              "3" = "balance-weak f_between", 
+                              "4" = "balance-strong f_between")) +
+  labs(title = "general + debaters",
+       y = "mean ability",
        x = NULL) +
   theme(
     legend.position = "none",  
