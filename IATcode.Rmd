@@ -4,7 +4,7 @@ output: html_document
 date: "2026-04-14"
 ---
 
-```{r package}
+```{r Package}
 
 library(GPArotation) 
 library(corrplot)  
@@ -22,9 +22,18 @@ library(scales)
 library(lavaan)
 library(semPlot)
 library(irr)
+library(semTools)
+library(effectsize)
+
+library(mclust)
+library(tidyLPA)
+library(plotly)
+library(reshape2)
+
+
 ```
 
-```{r scoring of argument writing}
+```{r Scoring of argument writing}
 
 data <- read.xlsx('WritingICC.xlsx')
 
@@ -61,9 +70,37 @@ summary_table <- data %>%
 print(summary_table)
 
 
+data <- read.xlsx('WritingICC.xlsx',sheet = 'IAT')
+
+psych::ICC(data[,c("M1-Q1_rater1","M1-Q1_rater2")]) #0.83
+psych::ICC(data[,c("M2_Q1_rater1","M2_Q1_rater2")]) #0.88
+psych::ICC(data[,c("M3-Q1_rater1","M3-Q1_rater2")]) #0.83
+psych::ICC(data[,c("M4-Q1_rater1","M4-Q1_rater2")]) #0.80
+psych::ICC(data[,c("M5-Q1_rater1","M5-Q1_rater2")]) #0.81
+psych::ICC(data[,c("M8-Q1_rater1","M8-Q1_rater2")]) #0.95
+
+psych::ICC(data[,c("M2_Q2_rater1","M2_Q2_rater2")]) #0.82
+psych::ICC(data[,c("M3-Q2_rater1","M3-Q2_rater2")]) #0.83
+psych::ICC(data[,c("M4-Q2_rater1","M4-Q2_rater2")]) #0.85
+psych::ICC(data[,c("M5-Q2_rater1","M5-Q2_rater2")]) #0.84
+psych::ICC(data[,c("M6-Q2_rater1","M6-Q2_rater2")]) #0.94
+psych::ICC(data[,c("M7-Q2_rater1","M7-Q2_rater2")]) #0.82
+
+
+EW_ICC <- read.xlsx('WritingICC.xlsx',sheet = 'EW')
+
+psych::ICC(EW_ICC[,c("P1_rater1","P1_rater2")]) #0.82
+psych::ICC(EW_ICC[,c("P2_rater1","P2_rater2")]) #0.95
+psych::ICC(EW_ICC[,c("P3_rater1","P3_rater2")]) #0.89
+psych::ICC(EW_ICC[,c("P4_rater1","P4_rater2")]) #0.87
+psych::ICC(EW_ICC[,c("P5_rater1","P5_rater2")]) #0.84
+psych::ICC(EW_ICC[,c("P6_rater1","P6_rater2")]) #0.83
+psych::ICC(EW_ICC[,c("P7_rater1","P7_rater2")]) #0.90
+psych::ICC(EW_ICC[,c("P8_rater1","P8_rater2")]) #0.89
+
 ```
 
-```{r position-change reasons}
+```{r Position-change reasons}
 
 #-----labeling consistency------
 
@@ -167,7 +204,7 @@ data$Invalid <- ifelse(data$Invalid_rater1 + data$Invalid_rater2 + data$Invalid_
 
 ```
 
-```{r description of indicators}
+```{r Description of indicators}
 
 #-----pass rate----
 
@@ -234,20 +271,21 @@ grid.arrange(p1,p2,p3,ncol=3)
 
 ```
 
-```{r ability estimation}
+```{r Ability estimation}
 
 #------IAT-----
 
 CFAdata <- read.xlsx("CFAdata.xlsx",sheet='general')
 
 IATmodel <- '
-  f1 =~ M1Q1 + M2Q1 + M3Q1 + M4Q1 + M5Q1
+  f1 =~ M1Q1 + M2Q1 + M3Q1 + M5Q1 
   f2 =~ M2Q2 + M4Q2 + M6Q2 + M7Q2 + total
-  f3 =~ Claim + Evidence + Elaboration + Structure + Fairness + Mean_number_new_evidence +	Mean_wordcount_new_evidence'
+  f3 =~ Claim + Evidence + Elaboration + Structure + Fairness + Mean_number_new_evidence'
 
 fit <- cfa(IATmodel, data = CFAdata)
-
 summary(fit, fit.measures = TRUE, standardized = TRUE)
+
+reliability(fit)
 
 factor_scores <- predict(fit)
 
@@ -257,8 +295,7 @@ CFAdata$f_integ <- factor_scores[,3]
 
 cor.test(CFAdata$f_single, CFAdata$f_between, method = "pearson") #0.445 p<0.001
 cor.test(CFAdata$f_single, CFAdata$f_integ, method = "pearson") #0.274 p<0.001
-cor.test(CFAdata$f_between, CFAdata$f_integ, method = "pearson")  #0.006 p=0.915
-
+cor.test(CFAdata$f_between, CFAdata$f_integ, method = "pearson")  #0.060 p=0.915
 
 #----TSA-----
 
@@ -327,89 +364,7 @@ factor_scores <- predict(fit, newdata = alldata)
 
 ```
 
-```{r Convergent and discriminant validity}
-
-data <- read.xlsx('CFAdata.xlsx',sheet='general')
-
-vars <- c('f_single','f_between','f_integ','f_TSA','f_EW','f_REA1','f_REA2','f_REA3')
-cor_data <- data[, vars]
-
-cor_matrix <- round(cor(cor_data, use = "complete.obs"), 3)
-
-cor_test <- corr.test(cor_data, use = "complete")
-
-p_matrix <- round(cor_test$p, 3)
-
-p_matrix
-
-```
-
-```{r known-group validty}
-
-library(effectsize)
-
-CFAdata <- read.xlsx("CFAdata.xlsx",sheet='general')
-debater <- read.xlsx("CFAdata.xlsx",sheet='debater')
-
-IATmodel <- '
-  f1 =~ M1Q1 + M2Q1 + M3Q1 + M4Q1 + M5Q1
-  f2 =~ M2Q2 + M4Q2 + M6Q2 + M7Q2 + total
-  f3 =~ Claim + Evidence + Elaboration + Structure + Fairness + Mean_number_new_evidence +	Mean_wordcount_new_evidence'
-
-fit <- cfa(IATmodel, data = CFAdata)
-
-summary(fit, fit.measures = TRUE, standardized = TRUE)
-
-factor_scores <- predict(fit, newdata = debater)
-
-debater$f_single <- factor_scores[,1]
-debater$f_between <- factor_scores[,2]
-debater$f_integ <- factor_scores[,3]
-
-diff <- read.xlsx("CFAdata.xlsx",sheet='difference')
-
-f1_normal <- diff %>% filter(group == "normal") %>% pull(f_single)
-f1_debater <- diff %>% filter(group == "debater") %>% pull(f_single)
-t.test(f1_debater, f1_normal)
-cohens_d(f1_debater, f1_normal)
-
-f2_normal <- diff %>% filter(group == "normal") %>% pull(f_between)
-f2_debater <- diff %>% filter(group == "debater") %>% pull(f_between)
-t.test(f2_debater, f2_normal)
-cohens_d(f2_debater, f2_normal)
-
-f3_normal <- diff %>% filter(group == "normal") %>% pull(f_integ)
-f3_debater <- diff %>% filter(group == "debater") %>% pull(f_integ)
-t.test(f3_debater, f3_normal)
-cohens_d(f3_debater, f3_normal)
-
-stats_comparison <- diff %>%
-  group_by(group) %>%
-  summarise(
-    f1_mean = round(mean(f_single, na.rm = TRUE), 2),
-    f1_min = round(min(f_single, na.rm = TRUE), 2),
-    f1_max = round(max(f_single, na.rm = TRUE), 2),
-    
-    f2_mean = round(mean(f_between, na.rm = TRUE), 2),
-    f2_min = round(min(f_between, na.rm = TRUE), 2),
-    f2_max = round(max(f_between, na.rm = TRUE), 2),
-    
-    f3_mean = round(mean(f_integ, na.rm = TRUE), 2),
-    f3_min = round(min(f_integ, na.rm = TRUE), 2),
-    f3_max = round(max(f_integ, na.rm = TRUE), 2)
-  )
-
-t(stats_comparison)
-
-
-```
-
 ```{r LPA}
-
-library(mclust)
-library(tidyLPA)
-library(plotly)
-library(reshape2)
 
 data <- read.xlsx('CFAdata.xlsx',sheet='general')
 
@@ -614,6 +569,11 @@ profile_means_long4$Class <- ifelse(profile_means_long4$Class == 1, "temp",
 
 profile_means_long4$Class <- ifelse(profile_means_long4$Class == "temp", 2, profile_means_long4$Class)
 
+profile_means_long4$Class <- factor(
+  profile_means_long4$Class,
+  levels = c("1", "4", "2", "3")
+)
+
 profile_means_long4$Class <- as.factor(profile_means_long4$Class)
 
 p4 <- ggplot(profile_means_long4, aes(x = Variable, y = Mean, group = Class, color = as.factor(Class))) +
@@ -628,9 +588,10 @@ p4 <- ggplot(profile_means_long4, aes(x = Variable, y = Mean, group = Class, col
   scale_y_continuous(limits = c(-0.85, 0.4), breaks = seq(-0.85, 0.4, by = 0.2)) +
   scale_color_discrete(name = " ", 
                       labels = c("1" = "C1", 
+                                 "4" = "C4",
                                 "2" = "C2", 
-                                "3" = "C3", 
-                                "4" = "C4")) +
+                                "3" = "C3"
+                                )) +
   labs(title = "4 Clusters",
        y = "Mean ability",
        x = NULL) +
@@ -638,6 +599,7 @@ p4 <- ggplot(profile_means_long4, aes(x = Variable, y = Mean, group = Class, col
     legend.position = "right",
     plot.title = element_text(hjust = 0.5),
     axis.text.x = element_text(color = "black", size = 10, face = "bold"),
+    axis.text.y = element_text(color = "black", size = 16),
     axis.title = element_text(size = 12, face = "bold"),
     legend.text = element_text(color = "black", size = 10)
   )
@@ -679,80 +641,323 @@ summary(anova_result)
 TukeyHSD(anova_result)
 
 
-# add debaters to do LPA
 
-newdata <- read.xlsx('CFAdata.xlsx',sheet='difference')
-debater <- newdata[, c("f_single", "f_between", "f_integ")]
+CFAdata <- read.xlsx("CFAdata.xlsx",sheet='general')
+debater <- read.xlsx("CFAdata.xlsx",sheet='debater')
 
-results <- estimate_profiles(
-  debater,
-  n_profiles = 4
+model_vars <- c("M1Q1", "M2Q1", "M3Q1", "M4Q1", "M5Q1",
+                "M2Q2", "M4Q2", "M6Q2", "M7Q2", "total",
+                "Claim", "Evidence", "Elaboration", "Structure", 
+                "Fairness", "Mean_number_new_evidence")
+
+CFAdata$group <- "general"
+debater$group  <- "debater"
+
+alldata <- rbind(
+  CFAdata[, c(model_vars, "group")],
+  debater[,  c(model_vars, "group")]
 )
 
-fit_indices <- get_fit(results)
-print(fit_indices)
+IATmodel <- '
+  f1 =~ M1Q1 + M2Q1 + M3Q1 + M5Q1
+  f2 =~ M2Q2 + M4Q2 + M6Q2 + M7Q2 + total
+  f3 =~ Claim + Evidence + Elaboration + Structure + Fairness + 
+        Mean_number_new_evidence'
+
+fit_partial_scalar <- cfa(
+  IATmodel,
+  data = alldata,
+  group = "group",
+  group.equal = c("loadings", "intercepts"),
+  group.partial = c(
+    "Evidence ~ 1",
+    'M5Q1 ~ 1'
+    )
+)
+
+
+factor_scores <- predict(fit_partial_scalar)
+
+factor_scores_mat <- rbind(
+  factor_scores$general,
+  factor_scores$debater
+)
+
+factor_scores_mat <- as.data.frame(factor_scores_mat)
+
+alldata$f_single  <- factor_scores_mat$f1
+alldata$f_between <- factor_scores_mat$f2
+alldata$f_integ   <- factor_scores_mat$f3
+
+lpa_vars <- c("f_single", "f_between", "f_integ")
+
+new_data <- alldata[alldata$group == "debater", lpa_vars]
+
+model_4 <- results[[1]]$model
+
+pred_debater <- predict(model_4, newdata = new_data)
+
+debater_data$profile_pred <- pred_debater$classification
+
+table(debater_data$profile_pred)
+
+```
+
+```{r Convergent and discriminant validity}
+
+data <- read.xlsx('CFAdata.xlsx',sheet='general')
+
+vars <- c('f_single','f_between','f_integ','f_TSA','f_EW','f_REA1','f_REA2','f_REA3')
+
+cor_data <- data[, vars]
+
+cor_matrix <- round(cor(cor_data, use = "complete.obs"), 3)
+
+cor_test <- corr.test(cor_data, use = "complete")
+
+p_matrix <- round(cor_test$p, 3)
+
+p_matrix
+
+```
+
+```{r Known-group validty}
+
+library(effectsize)
+
+#-----IAT------
+
+CFAdata <- read.xlsx("CFAdata.xlsx",sheet='general')
+debater <- read.xlsx("CFAdata.xlsx",sheet='debater')
+
+model_vars <- c("M1Q1", "M2Q1", "M3Q1", "M4Q1", "M5Q1",
+                "M2Q2", "M4Q2", "M6Q2", "M7Q2", "total",
+                "Claim", "Evidence", "Elaboration", "Structure", 
+                "Fairness", "Mean_number_new_evidence")
+
+CFAdata$group <- "general"
+debater$group  <- "debater"
+
+alldata <- rbind(
+  CFAdata[, c(model_vars, "group")],
+  debater[,  c(model_vars, "group")]
+)
+
+IATmodel <- '
+  f1 =~ M1Q1 + M2Q1 + M3Q1 + M5Q1
+  f2 =~ M2Q2 + M4Q2 + M6Q2 + M7Q2 + total
+  f3 =~ Claim + Evidence + Elaboration + Structure + Fairness + 
+        Mean_number_new_evidence'
+
+fit_configural <- cfa(IATmodel, data = alldata, group = "group")
+
+fit_metric     <- cfa(IATmodel, data = alldata, group = "group",
+                      group.equal = "loadings")
+
+fit_scalar     <- cfa(IATmodel, data = alldata, group = "group",
+                      group.equal = c("loadings", "intercepts"))
+
+fit_partial_scalar <- cfa(
+  IATmodel,
+  data = alldata,
+  group = "group",
+  group.equal = c("loadings", "intercepts"),
+  group.partial = c(
+    "Evidence ~ 1",
+    'M5Q1 ~ 1'
+    )
+)
+
+lavTestLRT(fit_configural, fit_metric, fit_partial_scalar)
+
+fit_table <- rbind(
+  configural = fitMeasures(
+    fit_configural,
+    c("chisq", "df", "cfi", "tli", "rmsea", "srmr", "aic", "bic")
+  ),
+  metric = fitMeasures(
+    fit_metric,
+    c("chisq", "df", "cfi", "tli", "rmsea", "srmr", "aic", "bic")
+  ),
+  scalar = fitMeasures(
+    fit_partial_scalar,
+    c("chisq", "df", "cfi", "tli", "rmsea", "srmr", "aic", "bic")
+  ))
+
+round(fit_table, 3)
+
+factor_scores <- predict(fit_partial_scalar)
+
+factor_scores_mat <- rbind(
+  factor_scores$general,
+  factor_scores$debater
+)
+
+factor_scores_mat <- as.data.frame(factor_scores_mat)
+
+alldata$f_single  <- factor_scores_mat$f1
+alldata$f_between <- factor_scores_mat$f2
+alldata$f_integ   <- factor_scores_mat$f3
+
+
+f1_normal <- alldata %>% dplyr::filter(group == "general") %>% pull(f_single)
+f1_debater <- alldata %>% dplyr::filter(group == "debater") %>% pull(f_single)
+t.test(f1_debater, f1_normal)
+cohens_d(f1_debater, f1_normal)
+
+f2_normal <- alldata %>% dplyr::filter(group == "general") %>% pull(f_between)
+f2_debater <- alldata %>% dplyr::filter(group == "debater") %>% pull(f_between)
+t.test(f2_debater, f2_normal)
+cohens_d(f2_debater, f2_normal)
+
+f3_normal <- alldata %>% filter(group == "general") %>% pull(f_integ)
+f3_debater <- alldata %>% filter(group == "debater") %>% pull(f_integ)
+t.test(f3_debater, f3_normal)
+cohens_d(f3_debater, f3_normal)
+
+stats_comparison <- alldata %>%
+  group_by(group) %>%
+  summarise(
+    f1_mean = round(mean(f_single, na.rm = TRUE), 2),
+    f1_min = round(min(f_single, na.rm = TRUE), 2),
+    f1_max = round(max(f_single, na.rm = TRUE), 2),
+    
+    f2_mean = round(mean(f_between, na.rm = TRUE), 2),
+    f2_min = round(min(f_between, na.rm = TRUE), 2),
+    f2_max = round(max(f_between, na.rm = TRUE), 2),
+    
+    f3_mean = round(mean(f_integ, na.rm = TRUE), 2),
+    f3_min = round(min(f_integ, na.rm = TRUE), 2),
+    f3_max = round(max(f_integ, na.rm = TRUE), 2)
+  )
+
+t(stats_comparison)
+
+
+#----TSA-----
+
+alldata_criterion <- read.xlsx('criterion.xlsx')
+
+general_data <- alldata_criterion[alldata_criterion$group == "general", ]
+debater_data <- alldata_criterion[alldata_criterion$group == "debater", ]
+
+modelTSA <- '
+  TSA =~ t1 + t2 + t3 + t4 + t6 + t7 + t8 + t9 + t10 + t11 + t12 + t13 + t14 + t15 + t17 + t18' # -t16 -t5 
+
+fit <- cfa(modelTSA, data = general_data)
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+
+factor_scores <- predict(fit, newdata = alldata_criterion)
+
+alldata_criterion$f_TSA <- factor_scores[, 1]
+
+f_TSA_general <- alldata_criterion$f_TSA[alldata_criterion$group == "general"]
+f_TSA_debater <- alldata_criterion$f_TSA[alldata_criterion$group == "debater"]
+t.test(f_TSA_debater, f_TSA_general)
+cohens_d(f_TSA_debater, f_TSA_general)
+
+#----EW-----
+
+modelEW <- '
+  f_EW =~ P1 + P2 + P3 + P4 + P5 + P6 + P7 + P8'
+
+fit <- cfa(modelEW, data = general_data)
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+
+factor_scores <- predict(fit, newdata = alldata_criterion)
+
+alldata_criterion$f_EW <- factor_scores
+colnames(alldata_criterion$f_EW) <- 'f_EW'
+
+f_EW_general <- alldata_criterion$f_EW[alldata_criterion$group == "general"]
+f_EW_debater <- alldata_criterion$f_EW[alldata_criterion$group == "debater"]
+t.test(f_EW_debater, f_EW_general)
+cohens_d(f_EW_debater, f_EW_general)
+
+stats_comparison <- alldata_criterion %>%
+  group_by(group) %>%
+  summarise(
+    f_TSA_mean = round(mean(f_TSA, na.rm = TRUE), 2),
+    f_TSA_min = round(min(f_TSA, na.rm = TRUE), 2),
+    f_TSA_max = round(max(f_TSA, na.rm = TRUE), 2),
+    
+    f_EW_mean = round(mean(f_EW, na.rm = TRUE), 2),
+    f_EW_min = round(min(f_EW, na.rm = TRUE), 2),
+    f_EW_max = round(max(f_EW, na.rm = TRUE), 2)
+  )
+
+stats_comparison
+
+
+
+#----add debaters to do LPA------
+
+
+LPA_all <- alldata[, c("f_single", "f_between", "f_integ")]
+
+results <- estimate_profiles(
+  LPA_all,
+  n_profiles = 4
+)
 
 profile_estimates <- get_estimates(results)
 profile_means <- profile_estimates %>%
   filter(Category == "Means") %>%
   select(Parameter, Estimate, Class)
-
-classified_data <- get_data(results)
-
-profile_counts <- table(classified_data$Class)
-profile_proportions <- prop.table(profile_counts)
-print(round(profile_proportions * 100, 2))
-
-debater$profile <- classified_data$Class
 
 profile_means_long <- profile_means %>%
   rename(Variable = Parameter, Mean = Estimate)
 
-profile_means_long$Variable <- factor(profile_means_long$Variable, 
-                                      levels = c("f_single", "f_between", "f_integ"))
+profile_means_long$Class <- factor(
+  profile_means_long$Class
+)
 
-custom_colors <- c("2" = "#FA8072","4" = "#7FBC41", "3" = "#4DBBD5", "1" = "#B983FF")
+profile_means_long$Variable <- factor(
+  profile_means_long$Variable,
+  levels = c("f_single", "f_between", "f_integ")
+)
 
-p <- ggplot(profile_means_long, aes(x = Variable, y = Mean, group = Class, color = as.factor(Class))) +
+p4 <- ggplot(profile_means_long, 
+             aes(x = Variable, y = Mean, 
+                 group = Class, color = as.factor(Class))) +
   geom_line(size = 1) +
   geom_point(size = 3) +
   theme_minimal() +
+  
+  # 这里只改标签显示，不改顺序
   scale_x_discrete(labels = c(
-    "f_single" = "f_single", 
-    "f_between" = "f_between", 
-    "f_integ" = "f_integ"
+    "f_single" = "Single", 
+    "f_between" = "Inter-argument", 
+    "f_integ" = "Integration"
   )) +
-  scale_y_continuous(limits = c(-0.85, 0.6), breaks = seq(-0.85, 0.6, by = 0.2)) +
-  # match color
-  scale_color_manual(name = " ", 
-                    values = custom_colors,
-                    labels = c("1" = "disadvantage", 
-                              "2" = "advantage", 
-                              "3" = "balance-weak f_between", 
-                              "4" = "balance-strong f_between")) +
-  labs(title = "general + debaters",
-       y = "mean ability",
-       x = NULL) +
+  
+  scale_color_discrete(
+    name = " ", 
+    labels = c(
+      "1" = "C1", 
+      "2" = "C2", 
+      "3" = "C3",
+      "4" = "C4"
+    )
+  ) +
+  
+  labs(
+    title = "4 Clusters",
+    y = "Mean ability",
+    x = NULL
+  ) +
+  
   theme(
-    legend.position = "none",  
+    legend.position = "right",
     plot.title = element_text(hjust = 0.5),
     axis.text.x = element_text(color = "black", size = 10, face = "bold"),
+    axis.text.y = element_text(color = "black", size = 16),
     axis.title = element_text(size = 12, face = "bold"),
     legend.text = element_text(color = "black", size = 10)
   )
 
-results <- estimate_profiles(
-  selected_vars,
-  n_profiles = 4
-)
+print(p4)
 
-fit_indices <- get_fit(results)
-print(fit_indices)
-
-profile_estimates <- get_estimates(results)
-profile_means <- profile_estimates %>%
-  filter(Category == "Means") %>%
-  select(Parameter, Estimate, Class)
 
 classified_data <- get_data(results)
 
@@ -760,16 +965,10 @@ profile_counts <- table(classified_data$Class)
 profile_proportions <- prop.table(profile_counts)
 print(round(profile_proportions * 100, 2))
 
-data$profile <- classified_data$Class
+LPA_all$profile <- classified_data$Class
 
-profile_means_long4 <- profile_means %>%
-  rename(Variable = Parameter, Mean = Estimate)
-
-profile_means_long4$Variable <- factor(profile_means_long4$Variable, 
-                                      levels = c("f_single", "f_between", "f_integ"))
-
-
-# compare proportion of each profiles (debater vs general)
+tab <- table(alldata$group, debater$profile)
+colnames(tab) <- paste0("class", 1:4)
 
 row_percent <- round(prop.table(tab, 1) * 100, 1)
 
@@ -784,6 +983,25 @@ rownames(result) <- rownames(tab)
 colnames(result) <- colnames(tab)
 
 print(result)
+
+```
+
+```{r length analysis}
+
+wordcount <- read.xlsx("CFAdata.xlsx",sheet='word_count')
+
+word <- wordcount[,c('ID',"word_count")]
+
+CFAdata <- read.xlsx("CFAdata.xlsx",sheet='general')
+
+merged <- merge(CFAdata,word,by='ID',all.x =TRUE)
+
+model_length <- lm(f_integ ~ word_count, data = merged)
+
+summary(model_length)
+
+r_squared <- summary(model_length)$r.squared
+r_squared #38%
 
 
 ```
